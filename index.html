@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>市集老闆的一天</title>
+<style>
+:root{--bg:#f4efe6;--fg:#3a3530;--mut:#5a524a;--card:#fff;--line:#d9d1c3;--acc:#c8643b;--accfg:#1f1a16;--ok:#2e7d4f;--warn:#d9a21b;--bad:#b3261e;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#2a2622;--fg:#f4efe6;--mut:#c9c1b3;--card:#3a3530;--line:#554d44;--acc:#e08a5f;--ok:#7fd6a0;--warn:#f2c230;--bad:#ff8a80;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#2a2622;--fg:#f4efe6;--mut:#c9c1b3;--card:#3a3530;--line:#554d44;--acc:#e08a5f;--ok:#7fd6a0;--warn:#f2c230;--bad:#ff8a80;color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box;-webkit-user-select:none;user-select:none}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.5 "Microsoft JhengHei","PingFang TC","Noto Sans TC",system-ui,sans-serif;touch-action:manipulation}
+img{image-rendering:pixelated}
+#app{max-width:480px;margin:0 auto;padding:12px}
+h1{font-size:28px;margin:8px 0}p{margin:6px 0}.mut{color:var(--mut);font-size:14px}
+.btn{border:0;border-bottom:4px solid rgba(0,0,0,.25);border-radius:8px;background:var(--acc);color:var(--accfg);font:inherit;font-weight:700;padding:10px 18px;cursor:pointer;text-decoration:none;display:inline-block}
+.btn:active{transform:translateY(2px);border-bottom-width:2px}
+.hud{display:flex;justify-content:space-between;font-weight:700;margin-bottom:6px}
+.awn{height:26px;border-radius:6px 6px 0 0;background:repeating-linear-gradient(90deg,var(--acc) 0 24px,var(--card) 24px 48px)}
+.row{display:flex;gap:6px;background:var(--card);border:1px solid var(--line);padding:6px;height:190px}
+.slot{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;cursor:pointer;min-width:0}
+.bub{background:#fff;color:#222;border:2px solid #222;border-radius:8px;padding:2px 4px;display:flex;gap:2px;align-items:center;font-size:12px;font-weight:700;margin-bottom:4px}
+.bub img{width:22px;height:22px}.cust{width:56px;height:70px}
+.bar{height:6px;width:100%;background:var(--line);margin-bottom:4px}.bar i{display:block;height:100%}
+.keeper{display:flex;justify-content:center;background:var(--line);padding:4px}
+.keeper img{width:48px;height:60px}.busy img{animation:sh .15s infinite}
+@keyframes sh{50%{transform:translateX(4px)}}
+.prods{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
+.p{background:var(--card);border:2px solid var(--line);border-radius:10px;padding:6px;text-align:center}
+.p .g{width:100%;border:0;background:none;color:inherit;font:inherit;cursor:pointer;padding:4px}
+.p .g img{width:44px;height:44px}.p .r{width:100%;margin-top:4px;padding:6px;font-size:14px}
+.msg{min-height:24px;font-weight:700;color:var(--bad)}
+.stk{color:var(--ok);font-weight:700}.stk.z{color:var(--bad)}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+// ====== 可以自己改的設定 ======
+const LINK="";            // 之後貼上報名連結（空白就不顯示按鈕）
+const T=60;               // 一天幾秒
+const RANK=[[0,"新手攤主"],[500,"市集常客"],[900,"市集傳說"]]; // 門檻是估計值，玩過再調
+const IT=[{n:"手工皂",p:80},{n:"貼紙",p:30},{n:"帆布袋",p:120}];
+// ====== 像素圖：每個字母是一種顏色 ======
+const MAP={
+ c:["..hhhh..",".hhhhhh.",".sesses.",".ssssss.","..bbbb..",".bbbbbb.","sbbbbbbs","..bbbb..","..l..l..","..l..l.."],
+ 0:["........",".wwwwww.","wppppppw","wppppppw","wppppppw",".wwwwww.","........","........"],
+ 1:["...yy...","...yy...","yyyyyyyy",".yyyyyy.","..yyyy..",".yyyyyy.",".yy..yy.","........"],
+ 2:[".b....b.",".b....b.",".b....b.","cccccccc","cccccccc","cccccccc","cccccccc","cccccccc"],
+ $:["..yyyy..",".yyyyyy.","yyyyyyyy","yyyooyyy","yyyooyyy","yyyyyyyy",".yyyyyy.","..yyyy.."]};
+const PAL={0:{p:"#f08fa8",w:"#ffffff"},1:{y:"#f2c230"},2:{b:"#7a5a3a",c:"#d9c7a0"},$:{y:"#f2c230",o:"#c58b12"}};
+const cache={};
+function img(map,pal){const k=map.join("")+JSON.stringify(pal);if(cache[k])return cache[k];
+ const c=document.createElement("canvas");c.width=map[0].length;c.height=map.length;const x=c.getContext("2d");
+ map.forEach((r,j)=>[...r].forEach((ch,i)=>{if(pal[ch]){x.fillStyle=pal[ch];x.fillRect(i,j,1,1)}}));
+ return cache[k]=c.toDataURL()}
+const ICON=[0,1,2].map(i=>img(MAP[i],PAL[i])),COIN=img(MAP.$,PAL.$);
+const pick=a=>a[Math.floor(Math.random()*a.length)];
+function person(h,b){return img(MAP.c,{h,b,s:"#f0c8a0",e:"#222222",l:"#3a3530"})}
+const KEEPER=person("#3a2a1f","#c8643b");
+// ====== 簡單音效（沒有音檔，用程式發嗶聲）======
+let ac=null;
+function beep(f,d=.08){try{ac=ac||new (window.AudioContext||window.webkitAudioContext)();const o=ac.createOscillator(),g=ac.createGain();
+ o.type="square";o.frequency.value=f;g.gain.value=.05;o.connect(g);g.connect(ac.destination);o.start();o.stop(ac.currentTime+d)}catch(e){}}
+// ====== 遊戲狀態 ======
+const app=document.getElementById("app");
+let G=null,S="intro",iv=null,best=0;
+try{best=+localStorage.getItem("market-best")||0}catch(e){}
+function start(){G={t:T,money:0,combo:0,served:0,miss:0,stock:[4,4,4],busy:0,next:1,slots:[null,null,null,null],msg:"",id:0};
+ S="play";clearInterval(iv);iv=setInterval(tick,100);render()}
+function tick(){
+ const dt=.1,f=1-G.t/T;G.t-=dt;G.busy=Math.max(0,G.busy-dt);G.next-=dt;
+ G.slots.forEach((c,i)=>{if(!c)return;c.pat-=dt*(c.st==="p"?.5:1);
+  if(c.pat<=0){G.slots[i]=null;G.combo=0;G.miss++;G.msg="客人等不及走掉了！";beep(120,.15)}});
+ if(G.next<=0){const i=G.slots.indexOf(null);
+  if(i>=0){const n=Math.random()<.5?1:2,need=Array.from({length:n},()=>Math.floor(Math.random()*3));
+   const pmax=16-6*f;G.slots[i]={need,total:need.reduce((a,p)=>a+IT[p].p,0),pat:pmax,pmax,st:"w",
+    spr:person(pick(["#3a2a1f","#8a4b1f","#1f1a16","#6b4ea0"]),pick(["#2e7d4f","#3a6fb0","#b3398a","#d9a21b","#5a524a"]))}}
+  G.next=2.6-1.2*f+Math.random()}
+ if(G.t<=0){clearInterval(iv);if(G.money>best){best=G.money;try{localStorage.setItem("market-best",best)}catch(e){}}S="end"}
+ render()}
+document.addEventListener("pointerdown",e=>{
+ const el=e.target.closest("[data-a]");if(!el)return;const a=el.dataset.a;
+ if(a==="go"){start();return}
+ if(S!=="play")return;
+ const k=a[0],n=+a.slice(1);
+ if(k==="g"&&G.busy<=0){
+  if(G.stock[n]<=0){G.msg=IT[n].n+"賣完了！快補貨";beep(120)}
+  else{const c=G.slots.find(c=>c&&c.st==="w"&&c.need.includes(n));
+   if(!c){G.msg="現在沒有人要"+IT[n].n}
+   else{c.need.splice(c.need.indexOf(n),1);G.stock[n]--;G.msg="";beep(520);if(!c.need.length){c.st="p"}}}}
+ else if(k==="r"&&G.busy<=0){G.stock[n]=Math.min(6,G.stock[n]+3);G.busy=1.2;G.msg="";beep(300)}
+ else if(k==="c"){const c=G.slots[n];
+  if(c&&c.st==="p"){G.money+=c.total+Math.floor(c.total*Math.min(G.combo,5)*.1);G.combo++;G.served++;G.slots[n]=null;G.msg="";beep(660+G.combo*30)}}
+ render()});
+function render(){
+ if(S==="intro"){app.innerHTML=`<h1>市集老闆的一天</h1><p>客人排隊、商品會賣完、還要收錢。<br>你只有 ${T} 秒，能做幾筆生意？</p>
+ <p class="mut">點下面的商品遞給客人 → 客人頭上出現金幣就點他收錢 → 庫存快沒了按「補貨」（補貨時動不了！）<br>連續收錢有加成，客人等太久會走掉。</p>
+ <p><img src="${KEEPER}" width="64" height="80"></p><p><button class="btn" data-a="go">開市！</button></p>`;return}
+ if(S==="end"){const r=[...RANK].reverse().find(x=>G.money>=x[0])[1];
+  app.innerHTML=`<h1>收攤了</h1><p class="big">今天營收：<b>$${G.money}</b>（${r}）</p>
+  <p>成交 ${G.served} 位客人，錯過 ${G.miss} 位。<br>最高紀錄：$${best}</p>
+  ${LINK?`<p class="mut">每天收攤都要對帳？我們正在找測試夥伴。</p><p><a class="btn" href="${LINK}">了解測試夥伴報名</a></p>`:""}
+  <p><button class="btn" data-a="go">再開一天</button></p>`;return}
+ const g=G;
+ let h=`<div class="hud"><span>剩 ${Math.ceil(g.t)} 秒</span><span>連擊 ×${g.combo}</span><span>$${g.money}</span></div><div class="awn"></div><div class="row">`;
+ g.slots.forEach((c,i)=>{h+=`<div class="slot" data-a="c${i}">`;
+  if(c){const r=c.pat/c.pmax,col=r>.5?"var(--ok)":r>.25?"var(--warn)":"var(--bad)";
+   h+=`<div class="bub">${c.st==="p"?`<img src="${COIN}">$${c.total}`:c.need.map(p=>`<img src="${ICON[p]}">`).join("")}</div>
+   <div class="bar"><i style="width:${r*100}%;background:${col}"></i></div><img class="cust" src="${c.spr}">`}
+  h+=`</div>`});
+ h+=`</div><div class="keeper${g.busy>0?" busy":""}"><img src="${KEEPER}"></div><div class="msg">${g.busy>0?"補貨中…":g.msg}</div><div class="prods">`;
+ IT.forEach((p,i)=>{h+=`<div class="p"><button class="g" data-a="g${i}"><img src="${ICON[i]}"><div>${p.n}</div><div class="stk${g.stock[i]?"":" z"}">剩 ${g.stock[i]}</div></button><button class="btn r" data-a="r${i}">補貨</button></div>`});
+ app.innerHTML=h+`</div>`}
+render();
+</script>
+</body>
+</html>
